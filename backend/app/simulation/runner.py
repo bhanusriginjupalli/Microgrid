@@ -32,11 +32,7 @@ from controllers.greedy_controller import GreedyController
 from controllers.rule_based_ems import RuleBasedEMS
 from controllers.mpc_controller import MPCController
 from experiments.phase4.robustness.scenarios.robust_scenario_suite import HeldOutScenarios
-from experiments.phase4_4_3.benchmark_phase4_4_3 import load_mappo_checkpoint
-from experiments.phase4_5.explainability.decision_explainer import (
-    DecisionExplainer,
-    verify_checkpoint_metadata,
-)
+from experiments.phase4_5.explainability.decision_explainer import DecisionExplainer
 from backend.app.experiment_loader.loader import sanitize_value
 from backend.app.schemas.simulation import (
     ControllerOption,
@@ -635,16 +631,16 @@ class SimulationService:
             return self._mappo_cache[key]
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint file does not exist: {checkpoint_path}")
-        if controller_type == "mappo":
-            verify_checkpoint_metadata(
+        if controller_type in ("mappo", "mappo_matched"):
+            # Import the training loader only when an RL policy is selected.
+            from experiments.phase4_4_3.benchmark_phase4_4_3 import load_mappo_checkpoint
+
+            expected_experiment = "bat_only" if controller_type == "mappo" else None
+            agent = load_mappo_checkpoint(
                 checkpoint_path,
-                expected_experiment="bat_only",
-                expected_seed=None,
-                expected_episode=None,
+                forecast_mode=forecast_mode,
+                expected_experiment=expected_experiment,
             )
-            agent = load_mappo_checkpoint(checkpoint_path, forecast_mode=forecast_mode)
-        elif controller_type == "mappo_matched":
-            agent = load_mappo_checkpoint(checkpoint_path, forecast_mode=forecast_mode)
         elif controller_type == "ippo":
             from experiments.phase6_model_comparison.evaluation.controller_registry import load_ippo_checkpoint
             agent = load_ippo_checkpoint(checkpoint_path, forecast_mode=forecast_mode)
