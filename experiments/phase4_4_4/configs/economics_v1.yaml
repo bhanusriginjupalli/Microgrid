@@ -1,0 +1,37 @@
+# GRIDGUARD AI — Phase 4.4.2 Authoritative Economic Accounting Configuration
+# ==============================================================================
+# Single source of truth for operating cost and true social cost evaluation
+# across ALL controllers (Rule-Based, Greedy, Lookahead Heuristic, and MAPPO).
+#
+# All energy units: MWh | All power units: MW | All cost units: USD ($)
+#
+# Startup Fuel Note:
+#   DynamicGenerator.request_start() adds startup_fuel_l (5.0 L) directly into
+#   total_fuel_l. Therefore, fuel_cost_usd = total_fuel_l * fuel_usd_per_liter
+#   already includes startup fuel. Set generator_startup_wear_usd separately ONLY
+#   for non-fuel mechanical wear so fuel is NEVER double-counted.
+#
+# Terminal SOC Adjustment Note:
+#   terminal_soc_replacement_usd_per_mwh is a symmetric modelling boundary-energy
+#   valuation: (E_initial - E_final) * rate. If battery ends below initial SOC,
+#   a positive replacement cost is added (preventing free energy depletion).
+#   If battery ends above initial SOC, an equivalent energy credit is applied.
+# ==============================================================================
+
+version: "1.0.0"
+
+tariffs:
+  grid_import_usd_per_mwh: 120.0
+  grid_export_usd_per_mwh: 40.0
+  fuel_usd_per_liter: 1.50
+  generator_startup_wear_usd: 0.0   # Non-fuel mechanical wear per cold start
+
+voll_penalties:
+  critical_usd_per_mwh: 10000.0
+  flexible_usd_per_mwh: 2000.0
+  other_usd_per_mwh: 1000.0
+
+storage_accounting:
+  battery_degradation_usd_per_mwh: 15.0         # Per MWh charge + discharge throughput
+  terminal_soc_replacement_usd_per_mwh: 120.0   # Modelling replacement tariff for delta E
+  terminal_soc_accounting_mode: "symmetric_modelling_valuation"

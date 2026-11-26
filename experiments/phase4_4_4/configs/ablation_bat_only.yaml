@@ -1,0 +1,63 @@
+# GRIDGUARD AI — Phase 4.4.4 Ablation Config: Battery-Only (Gen=False, Bat=True)
+version: "3.0.0"
+
+remediation:
+  experiment_name: "bat_only"
+  remediation_gen: false
+  remediation_bat: true
+  init_gen_bias: -0.60
+  use_cost_critics: true
+  gen_unneeded_base_penalty: 0.0
+  gen_unneeded_slope_penalty: 0.0
+  gen_missed_startup_penalty: 0.0
+  bat_deficit_under_dis_penalty: 3.00  # Penalize failing to discharge above reserve during deficits
+  bat_healthy_cycle_penalty: 0.60      # Mild healthy-grid unnecessary cycling penalty (no RE surplus)
+  bat_reserve_breach_penalty: 1.50     # Discretionary reserve (<30% SOC) breach outside emergency
+  bat_energy_val_weight: 0.05          # Exact $120/MWh storage delta valuation aligned w/ w_cost
+
+constraints:
+  cost_keys: ["crit", "inaction", "bat", "gen", "volt", "switch"]
+  cost_limits:
+    crit: 0.000
+    inaction: 0.020
+    bat: 0.030
+    gen: 0.020
+    volt: 0.050
+    switch: 0.010
+  multipliers_init:
+    crit: 1.50
+    inaction: 1.20
+    bat: 0.45
+    gen: 0.25
+    volt: 0.20
+    switch: 0.40
+  multipliers_lr:
+    crit: 0.08
+    inaction: 0.06
+    bat: 0.05
+    gen: 0.04
+    volt: 0.02
+    switch: 0.04
+  multipliers_max:
+    crit: 4.00
+    inaction: 3.00
+    bat: 2.00
+    gen: 1.50
+    volt: 1.50
+    switch: 2.00
+
+ppo_update:
+  gamma: 0.99
+  gae_lambda: 0.95
+  ppo_epochs: 6
+  minibatch_size: 128
+  episodes_per_update: 4
+  clip_eps: 0.20
+  entropy_coef: 0.015
+  actor_lr: 0.0005
+  critic_lr: 0.0005
+  max_grad_norm: 0.50
+
+tail_risk_cvar:
+  alpha: 0.25
+  tail_weight_beta: 1.50

@@ -1,0 +1,63 @@
+# GRIDGUARD AI — Phase 4.4.4 Ablation Config: Combined (Gen=True, Bat=True)
+version: "3.0.0"
+
+remediation:
+  experiment_name: "combined"
+  remediation_gen: true
+  remediation_bat: true
+  init_gen_bias: -1.35              # Starts feasible (< 0.05 MW) on healthy grid
+  use_cost_critics: true
+  gen_unneeded_base_penalty: 1.50   # Condition-aware penalty ONLY when healthy & grid adequate
+  gen_unneeded_slope_penalty: 3.00  # Proportional to excess (raw_gen - 0.125)
+  gen_missed_startup_penalty: 2.50  # Anti-inaction during islanded deficits when gen usable
+  bat_deficit_under_dis_penalty: 3.00  # Penalize idle/charging during deficits above reserve
+  bat_healthy_cycle_penalty: 0.60      # Mild healthy-grid unnecessary cycling penalty
+  bat_reserve_breach_penalty: 1.50     # Discretionary reserve (<30% SOC) breach
+  bat_energy_val_weight: 0.05          # Exact $120/MWh storage delta valuation aligned w/ w_cost
+
+constraints:
+  cost_keys: ["crit", "inaction", "bat", "gen", "volt", "switch"]
+  cost_limits:
+    crit: 0.000
+    inaction: 0.020
+    bat: 0.030
+    gen: 0.010
+    volt: 0.050
+    switch: 0.010
+  multipliers_init:
+    crit: 1.50
+    inaction: 1.20
+    bat: 0.45
+    gen: 0.50
+    volt: 0.20
+    switch: 0.40
+  multipliers_lr:
+    crit: 0.08
+    inaction: 0.06
+    bat: 0.05
+    gen: 0.05
+    volt: 0.02
+    switch: 0.04
+  multipliers_max:
+    crit: 4.00
+    inaction: 3.00
+    bat: 2.00
+    gen: 2.00
+    volt: 1.50
+    switch: 2.00
+
+ppo_update:
+  gamma: 0.99
+  gae_lambda: 0.95
+  ppo_epochs: 6
+  minibatch_size: 128
+  episodes_per_update: 4
+  clip_eps: 0.20
+  entropy_coef: 0.015
+  actor_lr: 0.0005
+  critic_lr: 0.0005
+  max_grad_norm: 0.50
+
+tail_risk_cvar:
+  alpha: 0.25
+  tail_weight_beta: 1.50

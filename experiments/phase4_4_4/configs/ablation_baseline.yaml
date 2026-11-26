@@ -1,0 +1,63 @@
+# GRIDGUARD AI — Phase 4.4.4 Ablation Config: Baseline (Gen=False, Bat=False)
+version: "3.0.0"
+
+remediation:
+  experiment_name: "baseline"
+  remediation_gen: false
+  remediation_bat: false
+  init_gen_bias: -0.60
+  use_cost_critics: false
+  gen_unneeded_base_penalty: 0.0
+  gen_unneeded_slope_penalty: 0.0
+  gen_missed_startup_penalty: 0.0
+  bat_deficit_under_dis_penalty: 0.0
+  bat_healthy_cycle_penalty: 0.0
+  bat_reserve_breach_penalty: 0.0
+  bat_energy_val_weight: 0.0
+
+constraints:
+  cost_keys: ["crit", "inaction", "bat", "gen", "volt", "switch"]
+  cost_limits:
+    crit: 0.000
+    inaction: 0.020
+    bat: 0.050
+    gen: 0.020
+    volt: 0.050
+    switch: 0.010
+  multipliers_init:
+    crit: 1.50
+    inaction: 1.20
+    bat: 0.30
+    gen: 0.25
+    volt: 0.20
+    switch: 0.40
+  multipliers_lr:
+    crit: 0.12
+    inaction: 0.10
+    bat: 0.05
+    gen: 0.04
+    volt: 0.02
+    switch: 0.05
+  multipliers_max:
+    crit: 8.00
+    inaction: 5.00
+    bat: 2.00
+    gen: 1.50
+    volt: 1.50
+    switch: 2.50
+
+ppo_update:
+  gamma: 0.99
+  gae_lambda: 0.95
+  ppo_epochs: 6
+  minibatch_size: 128
+  episodes_per_update: 4
+  clip_eps: 0.20
+  entropy_coef: 0.015
+  actor_lr: 0.0005
+  critic_lr: 0.0005
+  max_grad_norm: 0.50
+
+tail_risk_cvar:
+  alpha: 0.25
+  tail_weight_beta: 1.50
