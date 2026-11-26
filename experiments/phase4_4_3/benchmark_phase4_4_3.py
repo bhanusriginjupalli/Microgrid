@@ -39,7 +39,9 @@ if str(ROOT / "phase1_digital_twin") not in sys.path:
 
 from rl_environment.microgrid_parallel_env import MicrogridParallelEnv
 from rl_environment.economic_accounting import compute_episode_economics, EconomicConfig
-from rl_environment.action_space import parse_agent_action
+from rl_environment.action_space import parse_agent_action, get_agent_action_spaces
+from rl_environment.agent_config import AGENTS
+from rl_environment.observation_builder import get_agent_observation_spaces, get_global_state_space
 from controllers.rule_based_ems import RuleBasedEMS
 from controllers.greedy_controller import GreedyController
 from controllers.mpc_controller import MPCController
@@ -66,26 +68,48 @@ POLICY_ERROR_CODES = {
 }
 
 
-def load_mappo_checkpoint(checkpoint_path: Path, forecast_mode: Optional[str] = "realistic") -> MAPPOAgent:
-    models_dir = str(ROOT / "experiments" / "phase4" / "forecasting" / "models")
-    dummy_env = MicrogridParallelEnv(
-        scenario_id="scenario_a",
-        forecast_mode=forecast_mode,
-        forecast_models_dir=models_dir,
+def load_mappo_checkpoint(
+    checkpoint_path: Path,
+    forecast_mode: Optional[str] = "realistic",
+    expected_experiment: Optional[str] = None,
+) -> MAPPOAgent:
+    # Build policy spaces directly from the observation/action schemas. Creating
+    # a dummy MicrogridParallelEnv here also initializes Pandapower and the full
+    # forecasting stack, even though checkpoint loading only needs dimensions.
+    use_forecasts = (
+        forecast_mode is not None
+        and str(forecast_mode).lower() in ("realistic", "oracle", "true")
     )
     config = MAPPOConfig(
         forecast_mode=forecast_mode,
-        forecast_models_dir=models_dir,
+        forecast_models_dir=str(ROOT / "experiments" / "phase4" / "forecasting" / "models"),
         device="cpu",
     )
-    obs_dims = {ag: dummy_env.observation_space(ag).shape[0] for ag in dummy_env.possible_agents}
+    obs_spaces = get_agent_observation_spaces(forecast_mode=use_forecasts)
+    global_state_space = get_global_state_space(forecast_mode=use_forecasts)
+    action_spaces = get_agent_action_spaces()
+    obs_dims = {ag: obs_spaces[ag].shape[0] for ag in AGENTS}
     agent = MAPPOAgent(
         config=config,
         obs_dims=obs_dims,
-        action_spaces=dummy_env._action_spaces,
-        state_dim=dummy_env._global_state_space.shape[0],
+        action_spaces=action_spaces,
+        state_dim=global_state_space.shape[0],
     )
+
+    # Load the checkpoint once. The API previously deserialized it once for
+    # metadata verification and a second time for model construction.
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    if expected_experiment is not None:
+        actual_experiment = (ckpt.get("metrics", {}) or {}).get("experiment")
+        if actual_experiment != expected_experiment:
+            raise ValueError(
+                f"Checkpoint experiment mismatch: expected {expected_experiment}, "
+                f"got {actual_experiment}"
+            )
+    missing_agents = [ag for ag in agent.actors if ag not in ckpt.get("actors", {})]
+    if missing_agents:
+        raise ValueError(f"Checkpoint missing actor weights for agents: {missing_agents}")
+
     for ag, actor in agent.actors.items():
         if ag in ckpt.get("actors", {}):
             actor.load_state_dict(ckpt["actors"][ag])
